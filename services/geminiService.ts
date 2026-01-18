@@ -1,6 +1,11 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
+// Ensure process.env exists or provide a fallback to prevent ReferenceError
+if (typeof process === 'undefined') {
+  (window as any).process = { env: {} };
+}
+
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export async function parseInvoiceInput(input: string) {
