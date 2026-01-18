@@ -21,9 +21,9 @@ import {
   Image as ImageIcon,
   FileDown
 } from 'lucide-react';
-import { Invoice, InvoiceItem, ViewMode } from './types';
-import { generateInvoiceNumber, formatCurrency, generateWhatsAppLink, generateTelegramLink } from './utils/format';
-import { parseInvoiceInput } from './services/geminiService';
+import { Invoice, InvoiceItem, ViewMode } from './types.ts';
+import { generateInvoiceNumber, formatCurrency, generateWhatsAppLink, generateTelegramLink } from './utils/format.ts';
+import { parseInvoiceInput } from './services/geminiService.ts';
 
 declare const html2canvas: any;
 declare const jspdf: any;
@@ -180,7 +180,6 @@ const App: React.FC = () => {
           text: `Invoice for ${currentInvoice.customer.name}`
         });
       } else {
-        // Fallback: Download
         const url = URL.createObjectURL(file);
         const link = document.createElement('a');
         link.href = url;
