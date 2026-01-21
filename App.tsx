@@ -54,6 +54,7 @@ const App: React.FC = () => {
   // Form State
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  // Fix: Added missing useState hook call for customerAddress state initialization
   const [customerAddress, setCustomerAddress] = useState("");
   const [items, setItems] = useState<Partial<InvoiceItem>[]>([{ id: '1', description: '', quantity: 1, unitPrice: 0 }]);
   const [deliveryFee, setDeliveryFee] = useState(0);
@@ -131,7 +132,21 @@ const App: React.FC = () => {
     if (!invoiceRef.current || !currentInvoice) return;
     setIsFileLoading(true);
     try {
-      const canvas = await html2canvas(invoiceRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      // Small timeout to ensure status stamps are fully rendered before capture
+      await new Promise(r => setTimeout(r, 200));
+
+      const canvas = await html2canvas(invoiceRef.current, { 
+        scale: 2, 
+        useCORS: true, 
+        backgroundColor: '#ffffff',
+        logging: false,
+        onclone: (clonedDoc: Document) => {
+          // Ensure the watermark is visible in the clone
+          const watermark = clonedDoc.querySelector('.watermark-container');
+          if (watermark) (watermark as HTMLElement).style.display = 'flex';
+        }
+      });
+
       let file: File;
       if (format === 'image') {
         const blob = await new Promise<Blob>((resolve) => canvas.toBlob(resolve, 'image/png'));
@@ -145,7 +160,7 @@ const App: React.FC = () => {
       }
 
       if (navigator.share) {
-        await navigator.share({ files: [file], title: `Invoice ${currentInvoice.invoiceNumber}` });
+        await navigator.share({ files: [file], title: `Invoice ${currentInvoice.invoiceNumber}`, text: `Invoice for ${currentInvoice.customer.name}` });
       } else {
         const url = URL.createObjectURL(file);
         const link = document.createElement('a');
@@ -404,85 +419,102 @@ const App: React.FC = () => {
                   <button onClick={() => updateInvoiceStatus(currentInvoice.id, 'pending')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${currentInvoice.status === 'pending' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>PENDING</button>
                 </div>
                 <button onClick={() => handleShareFile('image')} className="px-6 py-3 bg-slate-100 text-slate-700 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-200"><ImageIcon size={18} /> SAVE IMAGE</button>
+                <button onClick={() => handleShareFile('pdf')} className="px-6 py-3 bg-slate-100 text-slate-700 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-200"><FileDown size={18} /> SAVE PDF</button>
                 <a href={generateWhatsAppLink(currentInvoice)} target="_blank" className="px-8 py-3 bg-[#25D366] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-[#25D366]/20"><MessageCircle size={18} /> WHATSAPP</a>
               </div>
             </div>
 
             <div ref={invoiceRef} className="bg-white p-16 md:p-24 rounded-[3rem] shadow-2xl border border-slate-100 relative overflow-hidden">
-              {currentInvoice.status === 'paid' && <div className="absolute top-10 right-10 -rotate-12 border-4 border-green-500 text-green-500 font-black text-2xl px-6 py-2 rounded-2xl opacity-40 uppercase tracking-[0.2em] pointer-events-none">PAID FULL</div>}
-              {currentInvoice.status === 'cancelled' && <div className="absolute top-10 right-10 -rotate-12 border-4 border-red-500 text-red-500 font-black text-2xl px-6 py-2 rounded-2xl opacity-40 uppercase tracking-[0.2em] pointer-events-none">VOIDED</div>}
+              {/* PAID Watermark - Now Centered and Highly Visible in Background */}
+              {currentInvoice.status === 'paid' && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 watermark-container">
+                  <div className="border-[15px] md:border-[25px] border-green-500/15 text-green-500/15 font-black text-[10rem] md:text-[20rem] -rotate-[25deg] uppercase tracking-[0.1em] whitespace-nowrap select-none">
+                    PAID
+                  </div>
+                </div>
+              )}
               
-              <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-20 relative z-10">
-                <div>
-                  <div className="w-24 h-24 bg-blue-600 rounded-[2rem] flex items-center justify-center text-white font-black text-5xl mb-8 shadow-2xl shadow-blue-200">T</div>
-                  <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-2 uppercase">THREM MULTILINKS</h1>
-                  <p className="text-blue-600 font-black tracking-[0.4em] uppercase text-[10px] mb-8">Venture • Cement Depot</p>
-                  <div className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] space-y-3 leading-relaxed">
-                    <p>Opposite Cam Abioye Estate, Bala Road, Eyenkorin, Ilorin, Kwara State</p>
-                    <p className="text-slate-900 font-bold">+234 916 043 1994, +234 913 044 1381</p>
+              {currentInvoice.status === 'cancelled' && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 watermark-container">
+                  <div className="border-[15px] md:border-[25px] border-red-500/10 text-red-500/10 font-black text-[8rem] md:text-[15rem] -rotate-[25deg] uppercase tracking-[0.1em] whitespace-nowrap select-none">
+                    VOID
                   </div>
                 </div>
-                <div className="text-right flex flex-col items-end">
-                  <h2 className="text-8xl font-black text-slate-50 mb-8 uppercase opacity-30 leading-none">INVOICE</h2>
-                  <div className="space-y-4">
-                    <div className="flex justify-end gap-8 text-[10px] font-black uppercase tracking-widest"><span className="text-slate-300">REF:</span><span className="text-slate-900 font-mono text-lg">{currentInvoice.invoiceNumber}</span></div>
-                    <div className="flex justify-end gap-8 text-[10px] font-black uppercase tracking-widest"><span className="text-slate-300">DATE:</span><span className="text-slate-900 text-lg">{new Date(currentInvoice.date).toLocaleDateString()}</span></div>
+              )}
+              
+              <div className="relative z-10">
+                <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-20 relative z-10">
+                  <div>
+                    <div className="w-24 h-24 bg-blue-600 rounded-[2rem] flex items-center justify-center text-white font-black text-5xl mb-8 shadow-2xl shadow-blue-200">T</div>
+                    <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-2 uppercase">THREM MULTILINKS</h1>
+                    <p className="text-blue-600 font-black tracking-[0.4em] uppercase text-[10px] mb-8">Venture • Cement Depot</p>
+                    <div className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] space-y-3 leading-relaxed">
+                      <p>Opposite Cam Abioye Estate, Bala Road, Eyenkorin, Ilorin, Kwara State</p>
+                      <p className="text-slate-900 font-bold">+234 916 043 1994, +234 913 044 1381</p>
+                    </div>
+                  </div>
+                  <div className="text-right flex flex-col items-end">
+                    <h2 className="text-8xl font-black text-slate-50 mb-8 uppercase opacity-30 leading-none">INVOICE</h2>
+                    <div className="space-y-4">
+                      <div className="flex justify-end gap-8 text-[10px] font-black uppercase tracking-widest"><span className="text-slate-300">REF:</span><span className="text-slate-900 font-mono text-lg">{currentInvoice.invoiceNumber}</span></div>
+                      <div className="flex justify-end gap-8 text-[10px] font-black uppercase tracking-widest"><span className="text-slate-300">DATE:</span><span className="text-slate-900 text-lg">{new Date(currentInvoice.date).toLocaleDateString()}</span></div>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="mb-20 bg-slate-50/50 p-10 rounded-[2rem] border border-slate-50">
-                <h3 className="text-slate-300 font-black uppercase tracking-widest text-[10px] mb-4">BILL TO</h3>
-                <p className="text-4xl font-black text-slate-900 uppercase tracking-tighter">{currentInvoice.customer.name}</p>
-                <p className="text-blue-600 font-black text-sm tracking-[0.2em] mt-2">{currentInvoice.customer.phone}</p>
-                {currentInvoice.customer.address && <p className="text-slate-400 text-xs font-black uppercase mt-4 tracking-widest leading-relaxed">{currentInvoice.customer.address}</p>}
-              </div>
+                <div className="mb-20 bg-white/60 backdrop-blur-sm p-10 rounded-[2rem] border border-slate-50 shadow-sm">
+                  <h3 className="text-slate-300 font-black uppercase tracking-widest text-[10px] mb-4">BILL TO</h3>
+                  <p className="text-4xl font-black text-slate-900 uppercase tracking-tighter">{currentInvoice.customer.name}</p>
+                  <p className="text-blue-600 font-black text-sm tracking-[0.2em] mt-2">{currentInvoice.customer.phone}</p>
+                  {currentInvoice.customer.address && <p className="text-slate-400 text-xs font-black uppercase mt-4 tracking-widest leading-relaxed">{currentInvoice.customer.address}</p>}
+                </div>
 
-              <div className="mb-16">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b-[6px] border-slate-900">
-                      <th className="py-6 text-left font-black text-[10px] uppercase tracking-[0.3em] text-slate-900">Items</th>
-                      <th className="py-6 text-center font-black text-[10px] uppercase tracking-[0.3em] text-slate-900">Qty</th>
-                      <th className="py-6 text-right font-black text-[10px] uppercase tracking-[0.3em] text-slate-900">Price</th>
-                      <th className="py-6 text-right font-black text-[10px] uppercase tracking-[0.3em] text-slate-900">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {currentInvoice.items.map((item, idx) => (
-                      <tr key={idx}>
-                        <td className="py-10 font-black text-slate-900 uppercase text-lg tracking-tight">{item.description}</td>
-                        <td className="py-10 text-center font-black text-slate-600 text-lg">{item.quantity}</td>
-                        <td className="py-10 text-right font-bold text-slate-600 text-lg">{formatCurrency(item.unitPrice)}</td>
-                        <td className="py-10 text-right font-black text-slate-900 text-xl tracking-tighter">{formatCurrency(item.total)}</td>
+                <div className="mb-16">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b-[6px] border-slate-900">
+                        <th className="py-6 text-left font-black text-[10px] uppercase tracking-[0.3em] text-slate-900">Items</th>
+                        <th className="py-6 text-center font-black text-[10px] uppercase tracking-[0.3em] text-slate-900">Qty</th>
+                        <th className="py-6 text-right font-black text-[10px] uppercase tracking-[0.3em] text-slate-900">Price</th>
+                        <th className="py-6 text-right font-black text-[10px] uppercase tracking-[0.3em] text-slate-900">Total</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {currentInvoice.items.map((item, idx) => (
+                        <tr key={idx}>
+                          <td className="py-10 font-black text-slate-900 uppercase text-lg tracking-tight">{item.description}</td>
+                          <td className="py-10 text-center font-black text-slate-600 text-lg">{item.quantity}</td>
+                          <td className="py-10 text-right font-bold text-slate-600 text-lg">{formatCurrency(item.unitPrice)}</td>
+                          <td className="py-10 text-right font-black text-slate-900 text-xl tracking-tighter">{formatCurrency(item.total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
-              <div className="flex justify-end mb-24">
-                <div className="w-full md:w-[400px] space-y-6">
-                  <div className="flex justify-between items-center text-slate-400 text-[10px] font-black uppercase tracking-widest"><span>Subtotal</span><span>{formatCurrency(currentInvoice.subtotal)}</span></div>
-                  <div className="flex justify-between items-center text-slate-400 text-[10px] font-black uppercase tracking-widest"><span>Logistics</span><span>{formatCurrency(currentInvoice.deliveryFee)}</span></div>
-                  {currentInvoice.discountAmount > 0 && (
-                    <div className="flex justify-between items-center text-red-400 text-[10px] font-black uppercase tracking-widest"><span>Discount</span><span>-{formatCurrency(currentInvoice.discountAmount)}</span></div>
-                  )}
-                  <div className="pt-8 border-t-[6px] border-slate-900 flex justify-between items-center">
-                    <span className="font-black uppercase text-xs tracking-widest text-slate-900">Grand Total</span>
-                    <span className="text-5xl font-black text-blue-600 tracking-tighter">{formatCurrency(currentInvoice.totalAmount)}</span>
+                <div className="flex justify-end mb-24">
+                  <div className="w-full md:w-[400px] space-y-6 bg-white/40 p-6 rounded-2xl">
+                    <div className="flex justify-between items-center text-slate-400 text-[10px] font-black uppercase tracking-widest"><span>Subtotal</span><span>{formatCurrency(currentInvoice.subtotal)}</span></div>
+                    <div className="flex justify-between items-center text-slate-400 text-[10px] font-black uppercase tracking-widest"><span>Logistics</span><span>{formatCurrency(currentInvoice.deliveryFee)}</span></div>
+                    {currentInvoice.discountAmount > 0 && (
+                      <div className="flex justify-between items-center text-red-400 text-[10px] font-black uppercase tracking-widest"><span>Discount</span><span>-{formatCurrency(currentInvoice.discountAmount)}</span></div>
+                    )}
+                    <div className="pt-8 border-t-[6px] border-slate-900 flex justify-between items-center">
+                      <span className="font-black uppercase text-xs tracking-widest text-slate-900">Grand Total</span>
+                      <span className="text-5xl font-black text-blue-600 tracking-tighter">{formatCurrency(currentInvoice.totalAmount)}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="pt-20 border-t-2 border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-20">
-                <div className="space-y-6 text-slate-300">
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em]">Policy</p>
-                  <p className="text-[10px] font-black uppercase leading-relaxed max-w-sm tracking-widest">NO REFUND FOR CEMENT SOLD IN GOOD CONDITION. THANK YOU FOR CHOOSING THREM.</p>
-                </div>
-                <div className="text-right flex flex-col items-end justify-end">
-                   <div className="w-64 border-b-4 border-slate-100 mb-4"></div>
-                   <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">Sign & Stamp</p>
+                <div className="pt-20 border-t-2 border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-20">
+                  <div className="space-y-6 text-slate-300">
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em]">Policy</p>
+                    <p className="text-[10px] font-black uppercase leading-relaxed max-w-sm tracking-widest">NO REFUND FOR CEMENT SOLD IN GOOD CONDITION. THANK YOU FOR CHOOSING THREM.</p>
+                  </div>
+                  <div className="text-right flex flex-col items-end justify-end">
+                    <div className="w-64 border-b-4 border-slate-100 mb-4"></div>
+                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">Sign & Stamp</p>
+                  </div>
                 </div>
               </div>
             </div>

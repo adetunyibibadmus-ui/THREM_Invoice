@@ -23,9 +23,12 @@ const getInvoiceSummaryText = (invoice: any) => {
     discountText = `*Discount (${invoice.discountPercent}%):* -${formatCurrency(invoice.discountAmount)}\n`;
   }
 
+  const statusText = invoice.status === 'paid' ? '✅ *PAID IN FULL*' : '⏳ *PAYMENT PENDING*';
+
   return `*INVOICE FROM THREM MULTILINKS VENTURE*
 ----------------------------------
 *Invoice:* ${invoice.invoiceNumber}
+*Status:* ${statusText}
 *Customer:* ${invoice.customer.name}
 *Date:* ${new Date(invoice.date).toLocaleDateString()}
 ----------------------------------
