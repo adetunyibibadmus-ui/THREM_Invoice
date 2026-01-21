@@ -1,7 +1,5 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Ensure we use the API key directly as per guidelines
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
 
 const INVOICE_SCHEMA = {
@@ -13,7 +11,8 @@ const INVOICE_SCHEMA = {
         name: { type: Type.STRING },
         phone: { type: Type.STRING },
         address: { type: Type.STRING }
-      }
+      },
+      required: ["name"]
     },
     items: {
       type: Type.ARRAY,
@@ -23,7 +22,8 @@ const INVOICE_SCHEMA = {
           description: { type: Type.STRING },
           quantity: { type: Type.NUMBER },
           unitPrice: { type: Type.NUMBER }
-        }
+        },
+        required: ["description", "quantity", "unitPrice"]
       }
     },
     deliveryFee: { type: Type.NUMBER },
@@ -31,18 +31,28 @@ const INVOICE_SCHEMA = {
   }
 };
 
-const SYSTEM_INSTRUCTION = "Assistant for Threm Multilinks Venture (cement depot). Extract customer details, cement brands (Dangote, BUA, etc), quantity, unit price, and delivery fees. Defaults: Dangote 9000, BUA 8500 if not stated. If info is missing, leave null or default.";
+const SYSTEM_INSTRUCTION = `You are an expert invoice assistant for Threm Multilinks Venture, a major cement depot.
+Your task is to extract customer and order details from text or audio.
+
+Business Context:
+- Primary products: Cement (Dangote, BUA, etc.)
+- Location: Eyenkorin, Ilorin, Kwara State.
+- Default prices if not specified: Dangote ₦9,000, BUA ₦8,500.
+
+Rules:
+1. Always return valid JSON matching the schema.
+2. If the user mentions "bags", that is the quantity.
+3. Extract phone numbers carefully.
+4. If a delivery fee is mentioned, include it.
+5. If some information is missing, leave it null or use defaults for prices.`;
 
 export async function parseInvoiceInput(input: string) {
   try {
-    if (!process.env.API_KEY) {
-      console.warn("API Key is missing. AI features will not work.");
-      return null;
-    }
+    if (!process.env.API_KEY) throw new Error("API Key is missing.");
 
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Parse this message into a structured invoice: "${input}"`,
+      contents: `Process this order for Threm Multilinks: "${input}"`,
       config: {
         responseMimeType: "application/json",
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -50,19 +60,20 @@ export async function parseInvoiceInput(input: string) {
       }
     });
 
-    if (response.text) {
-      return JSON.parse(response.text.trim());
+    const text = response.text;
+    if (text) {
+      return JSON.parse(text.trim());
     }
     return null;
   } catch (error) {
-    console.error("Gemini Text Error:", error);
+    console.error("AI Text Parsing Error:", error);
     return null;
   }
 }
 
 export async function parseVoiceInput(base64Audio: string, mimeType: string) {
   try {
-    if (!process.env.API_KEY) return null;
+    if (!process.env.API_KEY) throw new Error("API Key is missing.");
 
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -75,7 +86,7 @@ export async function parseVoiceInput(base64Audio: string, mimeType: string) {
             }
           },
           {
-            text: "Listen to this audio and extract the customer and invoice details into a JSON format. This is for Threm Multilinks Venture."
+            text: "Extract customer name, phone, address, cement type, quantity, and delivery fee from this voice note for an invoice."
           }
         ]
       },
@@ -86,12 +97,13 @@ export async function parseVoiceInput(base64Audio: string, mimeType: string) {
       }
     });
 
-    if (response.text) {
-      return JSON.parse(response.text.trim());
+    const text = response.text;
+    if (text) {
+      return JSON.parse(text.trim());
     }
     return null;
   } catch (error) {
-    console.error("Gemini Voice Error:", error);
+    console.error("AI Voice Parsing Error:", error);
     return null;
   }
 }

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Threm Multilinks Venture - Invoice System</title>
     <script>
-      // Strictly follow the injection of API_KEY
+      // Shim process for browser-side libraries.
+      // The actual API key is injected by the environment.
       window.process = { env: { API_KEY: "" } };
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
