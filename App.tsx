@@ -572,9 +572,9 @@ const App: React.FC = () => {
                   <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-3xl mb-4 shadow-xl">T</div>
                   <h1 className="text-3xl font-black text-slate-900">THREM MULTILINKS</h1>
                   <p className="text-blue-600 font-bold tracking-widest uppercase text-sm mb-4">Venture • Cement Depot</p>
-                  <div className="text-slate-500 text-xs space-y-1">
-                    <p>Main Depot, Enugu, Nigeria</p>
-                    <p>+234 812 345 6789</p>
+                  <div className="text-slate-500 text-xs space-y-1 max-w-xs">
+                    <p>Opposite Cam Abioye Estate, Along Bala Road, Eyenkorin, Ilorin, Kwara State</p>
+                    <p>+234 916 043 1994, +234 913 044 1381</p>
                   </div>
                 </div>
                 <div className="text-right flex flex-col items-end">
