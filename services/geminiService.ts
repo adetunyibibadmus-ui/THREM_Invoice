@@ -9,7 +9,8 @@ const INVOICE_SCHEMA = {
         name: { type: Type.STRING },
         phone: { type: Type.STRING },
         address: { type: Type.STRING }
-      }
+      },
+      required: ["name"]
     },
     items: {
       type: Type.ARRAY,
@@ -19,35 +20,37 @@ const INVOICE_SCHEMA = {
           description: { type: Type.STRING },
           quantity: { type: Type.NUMBER },
           unitPrice: { type: Type.NUMBER }
-        }
+        },
+        required: ["description", "quantity", "unitPrice"]
       }
     },
     deliveryFee: { type: Type.NUMBER },
+    discountPercent: { type: Type.NUMBER },
     notes: { type: Type.STRING }
-  }
+  },
+  required: ["customer", "items"]
 };
 
-const SYSTEM_INSTRUCTION = `You are a professional sales assistant for "Threm Multilinks Venture", a major cement distributor.
-Your goal is to extract order details into a structured format.
+const SYSTEM_INSTRUCTION = `You are a professional sales automation assistant for "Threm Multilinks Venture", a cement depot.
+Your task is to extract order details from text or audio.
 
-CEMENT BUSINESS CONTEXT:
-- Products: Dangote Cement, BUA Cement, Ibeto, etc.
+BUSINESS CONTEXT:
+- Products: Dangote Cement, BUA Cement, etc.
 - Standard Pricing: If price is not mentioned, use Dangote = 9000, BUA = 8500.
-- Quantity: Usually referred to as "bags".
+- "Bags" = Quantity.
 
-INSTRUCTIONS:
-1. Extract customer name, phone, and delivery address.
-2. Identify cement brand and quantity.
-3. Identify delivery or loading fees.
-4. Output ONLY valid JSON according to the schema.
-5. If details are vague, make your best guess based on cement industry standards.`;
+EXTRACTION RULES:
+1. Identify Customer Name, Phone, and Delivery Address.
+2. Identify Product, Quantity (bags), and Price.
+3. Identify Delivery/Loading fees.
+4. Output results in valid JSON matching the schema.`;
 
 export async function parseInvoiceInput(input: string) {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Extract order details from this message: "${input}"`,
+      contents: `Extract order details for Threm Multilinks: "${input}"`,
       config: {
         responseMimeType: "application/json",
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -55,20 +58,19 @@ export async function parseInvoiceInput(input: string) {
       }
     });
 
-    const text = response.text;
-    if (text) {
-      return JSON.parse(text.trim());
+    if (response.text) {
+      return JSON.parse(response.text.trim());
     }
     return null;
   } catch (error) {
-    console.error("Smart Entry AI Error:", error);
-    return null;
+    console.error("AI Smart Entry Failed:", error);
+    throw error;
   }
 }
 
 export async function parseVoiceInput(base64Audio: string, mimeType: string) {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: {
@@ -80,7 +82,7 @@ export async function parseVoiceInput(base64Audio: string, mimeType: string) {
             }
           },
           {
-            text: "Listen to this voice note and extract the cement order details (customer, items, price, delivery) for Threm Multilinks Venture into JSON format."
+            text: "Extract order details from this voice note for Threm Multilinks Venture into JSON format."
           }
         ]
       },
@@ -91,13 +93,12 @@ export async function parseVoiceInput(base64Audio: string, mimeType: string) {
       }
     });
 
-    const text = response.text;
-    if (text) {
-      return JSON.parse(text.trim());
+    if (response.text) {
+      return JSON.parse(response.text.trim());
     }
     return null;
   } catch (error) {
-    console.error("Voice Entry AI Error:", error);
-    return null;
+    console.error("AI Voice Entry Failed:", error);
+    throw error;
   }
 }
