@@ -54,7 +54,6 @@ const App: React.FC = () => {
   // Form State
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  // Fix: Added missing useState hook call for customerAddress state initialization
   const [customerAddress, setCustomerAddress] = useState("");
   const [items, setItems] = useState<Partial<InvoiceItem>[]>([{ id: '1', description: '', quantity: 1, unitPrice: 0 }]);
   const [deliveryFee, setDeliveryFee] = useState(0);
@@ -132,18 +131,20 @@ const App: React.FC = () => {
     if (!invoiceRef.current || !currentInvoice) return;
     setIsFileLoading(true);
     try {
-      // Small timeout to ensure status stamps are fully rendered before capture
-      await new Promise(r => setTimeout(r, 200));
+      // Ensure element is visible and wait for any layout shifts
+      await new Promise(r => setTimeout(r, 300));
 
       const canvas = await html2canvas(invoiceRef.current, { 
-        scale: 2, 
+        scale: 3, 
         useCORS: true, 
         backgroundColor: '#ffffff',
         logging: false,
         onclone: (clonedDoc: Document) => {
-          // Ensure the watermark is visible in the clone
-          const watermark = clonedDoc.querySelector('.watermark-container');
-          if (watermark) (watermark as HTMLElement).style.display = 'flex';
+          const watermark = clonedDoc.querySelector('.watermark-stamp');
+          if (watermark) {
+            (watermark as HTMLElement).style.opacity = '0.15';
+            (watermark as HTMLElement).style.display = 'flex';
+          }
         }
       });
 
@@ -160,15 +161,23 @@ const App: React.FC = () => {
       }
 
       if (navigator.share) {
-        await navigator.share({ files: [file], title: `Invoice ${currentInvoice.invoiceNumber}`, text: `Invoice for ${currentInvoice.customer.name}` });
+        await navigator.share({ 
+          files: [file], 
+          title: `Invoice ${currentInvoice.invoiceNumber}`, 
+          text: `Invoice for ${currentInvoice.customer.name}` 
+        });
       } else {
         const url = URL.createObjectURL(file);
         const link = document.createElement('a');
         link.href = url;
         link.download = file.name;
         link.click();
+        URL.revokeObjectURL(url);
       }
-    } catch (err) { alert("Sharing failed. You can still screenshot or use Print."); } finally { setIsFileLoading(false); }
+    } catch (err) { 
+      console.error(err);
+      alert("Sharing failed. You can still screenshot or use the Print function."); 
+    } finally { setIsFileLoading(false); }
   };
 
   const applyAiResult = (result: any) => {
@@ -389,9 +398,10 @@ const App: React.FC = () => {
                         <td className="px-10 py-8">
                           <div className="font-black text-slate-900 uppercase text-lg">{inv.customer.name}</div>
                           <div className="flex items-center gap-2 mt-1">
-                            {inv.status === 'paid' && <span className="flex items-center gap-1 text-[9px] font-black uppercase text-green-500"><CheckCircle2 size={10}/> PAID</span>}
-                            {inv.status === 'pending' && <span className="flex items-center gap-1 text-[9px] font-black uppercase text-amber-500"><Clock size={10}/> PENDING</span>}
-                            {inv.status === 'cancelled' && <span className="flex items-center gap-1 text-[9px] font-black uppercase text-red-400"><XCircle size={10}/> CANCELLED</span>}
+                            {/* Fixed icon size syntax to avoid boolean assignment errors */}
+                            {inv.status === 'paid' && <span className="flex items-center gap-1 text-[9px] font-black uppercase text-green-500"><CheckCircle2 size={10} /> PAID</span>}
+                            {inv.status === 'pending' && <span className="flex items-center gap-1 text-[9px] font-black uppercase text-amber-500"><Clock size={10} /> PENDING</span>}
+                            {inv.status === 'cancelled' && <span className="flex items-center gap-1 text-[9px] font-black uppercase text-red-400"><XCircle size={10} /> VOIDED</span>}
                           </div>
                         </td>
                         <td className="px-10 py-8 font-black text-blue-600 text-xl tracking-tighter">{formatCurrency(inv.totalAmount)}</td>
@@ -404,7 +414,7 @@ const App: React.FC = () => {
                 </table>
               </div>
             ) : (
-              <div className="p-24 text-center text-slate-300 font-black uppercase text-xs">Empty Database</div>
+              <div className="p-24 text-center text-slate-300 font-black uppercase text-xs">Empty Records Database</div>
             )}
           </div>
         )}
@@ -425,25 +435,25 @@ const App: React.FC = () => {
             </div>
 
             <div ref={invoiceRef} className="bg-white p-16 md:p-24 rounded-[3rem] shadow-2xl border border-slate-100 relative overflow-hidden">
-              {/* PAID Watermark - Now Centered and Highly Visible in Background */}
+              {/* PAID Watermark - Large, Centered, Highly Visible Backdrop */}
               {currentInvoice.status === 'paid' && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 watermark-container">
-                  <div className="border-[15px] md:border-[25px] border-green-500/15 text-green-500/15 font-black text-[10rem] md:text-[20rem] -rotate-[25deg] uppercase tracking-[0.1em] whitespace-nowrap select-none">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 watermark-stamp">
+                  <div className="border-[20px] md:border-[30px] border-green-500/15 text-green-500/15 font-black text-[12rem] md:text-[22rem] -rotate-[35deg] uppercase tracking-tight whitespace-nowrap select-none flex items-center justify-center p-20">
                     PAID
                   </div>
                 </div>
               )}
               
               {currentInvoice.status === 'cancelled' && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 watermark-container">
-                  <div className="border-[15px] md:border-[25px] border-red-500/10 text-red-500/10 font-black text-[8rem] md:text-[15rem] -rotate-[25deg] uppercase tracking-[0.1em] whitespace-nowrap select-none">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 watermark-stamp">
+                  <div className="border-[20px] md:border-[30px] border-red-500/10 text-red-500/10 font-black text-[10rem] md:text-[18rem] -rotate-[35deg] uppercase tracking-tight whitespace-nowrap select-none flex items-center justify-center p-20">
                     VOID
                   </div>
                 </div>
               )}
               
               <div className="relative z-10">
-                <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-20 relative z-10">
+                <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-20">
                   <div>
                     <div className="w-24 h-24 bg-blue-600 rounded-[2rem] flex items-center justify-center text-white font-black text-5xl mb-8 shadow-2xl shadow-blue-200">T</div>
                     <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-2 uppercase">THREM MULTILINKS</h1>
@@ -462,14 +472,14 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="mb-20 bg-white/60 backdrop-blur-sm p-10 rounded-[2rem] border border-slate-50 shadow-sm">
+                <div className="mb-20 bg-white/60 backdrop-blur-sm p-10 rounded-[2rem] border border-slate-50 shadow-sm relative z-10">
                   <h3 className="text-slate-300 font-black uppercase tracking-widest text-[10px] mb-4">BILL TO</h3>
                   <p className="text-4xl font-black text-slate-900 uppercase tracking-tighter">{currentInvoice.customer.name}</p>
                   <p className="text-blue-600 font-black text-sm tracking-[0.2em] mt-2">{currentInvoice.customer.phone}</p>
                   {currentInvoice.customer.address && <p className="text-slate-400 text-xs font-black uppercase mt-4 tracking-widest leading-relaxed">{currentInvoice.customer.address}</p>}
                 </div>
 
-                <div className="mb-16">
+                <div className="mb-16 relative z-10">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b-[6px] border-slate-900">
@@ -492,8 +502,8 @@ const App: React.FC = () => {
                   </table>
                 </div>
 
-                <div className="flex justify-end mb-24">
-                  <div className="w-full md:w-[400px] space-y-6 bg-white/40 p-6 rounded-2xl">
+                <div className="flex justify-end mb-24 relative z-10">
+                  <div className="w-full md:w-[400px] space-y-6 bg-white/40 backdrop-blur-sm p-6 rounded-2xl">
                     <div className="flex justify-between items-center text-slate-400 text-[10px] font-black uppercase tracking-widest"><span>Subtotal</span><span>{formatCurrency(currentInvoice.subtotal)}</span></div>
                     <div className="flex justify-between items-center text-slate-400 text-[10px] font-black uppercase tracking-widest"><span>Logistics</span><span>{formatCurrency(currentInvoice.deliveryFee)}</span></div>
                     {currentInvoice.discountAmount > 0 && (
@@ -506,7 +516,7 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="pt-20 border-t-2 border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-20">
+                <div className="pt-20 border-t-2 border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-20 relative z-10">
                   <div className="space-y-6 text-slate-300">
                     <p className="text-[10px] font-black uppercase tracking-[0.3em]">Policy</p>
                     <p className="text-[10px] font-black uppercase leading-relaxed max-w-sm tracking-widest">NO REFUND FOR CEMENT SOLD IN GOOD CONDITION. THANK YOU FOR CHOOSING THREM.</p>

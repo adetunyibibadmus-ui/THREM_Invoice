@@ -45,11 +45,12 @@ EXTRACTION RULES:
 3. Identify Delivery/Loading fees.
 4. Output results in valid JSON matching the schema.`;
 
+// Parse text input using Gemini 3 Pro
 export async function parseInvoiceInput(input: string) {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-pro-preview",
       contents: `Extract order details for Threm Multilinks: "${input}"`,
       config: {
         responseMimeType: "application/json",
@@ -68,11 +69,12 @@ export async function parseInvoiceInput(input: string) {
   }
 }
 
+// Parse voice input using Gemini 3 Pro
 export async function parseVoiceInput(base64Audio: string, mimeType: string) {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-pro-preview",
       contents: {
         parts: [
           {
