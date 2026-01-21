@@ -1,7 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
-
 const INVOICE_SCHEMA = {
   type: Type.OBJECT,
   properties: {
@@ -11,8 +9,7 @@ const INVOICE_SCHEMA = {
         name: { type: Type.STRING },
         phone: { type: Type.STRING },
         address: { type: Type.STRING }
-      },
-      required: ["name"]
+      }
     },
     items: {
       type: Type.ARRAY,
@@ -22,8 +19,7 @@ const INVOICE_SCHEMA = {
           description: { type: Type.STRING },
           quantity: { type: Type.NUMBER },
           unitPrice: { type: Type.NUMBER }
-        },
-        required: ["description", "quantity", "unitPrice"]
+        }
       }
     },
     deliveryFee: { type: Type.NUMBER },
@@ -31,28 +27,27 @@ const INVOICE_SCHEMA = {
   }
 };
 
-const SYSTEM_INSTRUCTION = `You are an expert invoice assistant for Threm Multilinks Venture, a major cement depot.
-Your task is to extract customer and order details from text or audio.
+const SYSTEM_INSTRUCTION = `You are a professional sales assistant for "Threm Multilinks Venture", a major cement distributor.
+Your goal is to extract order details into a structured format.
 
-Business Context:
-- Primary products: Cement (Dangote, BUA, etc.)
-- Location: Eyenkorin, Ilorin, Kwara State.
-- Default prices if not specified: Dangote ₦9,000, BUA ₦8,500.
+CEMENT BUSINESS CONTEXT:
+- Products: Dangote Cement, BUA Cement, Ibeto, etc.
+- Standard Pricing: If price is not mentioned, use Dangote = 9000, BUA = 8500.
+- Quantity: Usually referred to as "bags".
 
-Rules:
-1. Always return valid JSON matching the schema.
-2. If the user mentions "bags", that is the quantity.
-3. Extract phone numbers carefully.
-4. If a delivery fee is mentioned, include it.
-5. If some information is missing, leave it null or use defaults for prices.`;
+INSTRUCTIONS:
+1. Extract customer name, phone, and delivery address.
+2. Identify cement brand and quantity.
+3. Identify delivery or loading fees.
+4. Output ONLY valid JSON according to the schema.
+5. If details are vague, make your best guess based on cement industry standards.`;
 
 export async function parseInvoiceInput(input: string) {
   try {
-    if (!process.env.API_KEY) throw new Error("API Key is missing.");
-
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Process this order for Threm Multilinks: "${input}"`,
+      contents: `Extract order details from this message: "${input}"`,
       config: {
         responseMimeType: "application/json",
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -66,15 +61,14 @@ export async function parseInvoiceInput(input: string) {
     }
     return null;
   } catch (error) {
-    console.error("AI Text Parsing Error:", error);
+    console.error("Smart Entry AI Error:", error);
     return null;
   }
 }
 
 export async function parseVoiceInput(base64Audio: string, mimeType: string) {
   try {
-    if (!process.env.API_KEY) throw new Error("API Key is missing.");
-
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: {
@@ -86,7 +80,7 @@ export async function parseVoiceInput(base64Audio: string, mimeType: string) {
             }
           },
           {
-            text: "Extract customer name, phone, address, cement type, quantity, and delivery fee from this voice note for an invoice."
+            text: "Listen to this voice note and extract the cement order details (customer, items, price, delivery) for Threm Multilinks Venture into JSON format."
           }
         ]
       },
@@ -103,7 +97,7 @@ export async function parseVoiceInput(base64Audio: string, mimeType: string) {
     }
     return null;
   } catch (error) {
-    console.error("AI Voice Parsing Error:", error);
+    console.error("Voice Entry AI Error:", error);
     return null;
   }
 }
