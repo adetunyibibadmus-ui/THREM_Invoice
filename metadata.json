@@ -1,5 +1,7 @@
 {
   "name": "Threm Multilinks Venture - Invoice Master",
   "description": "A professional invoice management system for cement distribution with AI-powered natural language processing and direct WhatsApp integration.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }

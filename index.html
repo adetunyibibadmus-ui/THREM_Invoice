@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Threm Multilinks Venture - Invoice System</title>
     <script>
-      // Shim process for libraries that expect it
+      // Strictly follow the injection of API_KEY
       window.process = { env: { API_KEY: "" } };
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -20,11 +20,20 @@
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
             margin: 0;
+            -webkit-tap-highlight-color: transparent;
         }
         @media print {
             .no-print {
                 display: none !important;
             }
+        }
+        @keyframes pulse-red {
+          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+          70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .recording-pulse {
+          animation: pulse-red 2s infinite;
         }
     </style>
 <script type="importmap">
